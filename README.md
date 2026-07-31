@@ -1,6 +1,20 @@
 # MyNavicat — SQL 資料庫備份與管理工具
 
-MyNavicat 是一款媲美 Navicat 的現代化跨平台資料庫管理與自動化備份工具。支援包含 **MySQL, PostgreSQL, SQL Server, MariaDB, SQLite, Oracle** 在內的多種主流資料庫，具備連線管理、資料表瀏覽、即時與定時排程備份、超大型資料庫分片備份 (Chunking)、資料匯出匯入 (CSV/JSON/SQL) 以及 WebSocket 桌面即時通知功能。
+MyNavicat 是一款媲美 Navicat 的現代化跨平台資料庫管理與自動化備份工具。支援包含 **MySQL, PostgreSQL, SQL Server, MariaDB, SQLite, Oracle** 在內的多種主流資料庫，具備連線管理、資料表瀏覽、即時與定時排程備份、超大型資料庫分片備份 (Chunked Backup)、資料匯出匯入 (CSV/JSON/SQL) 以及 WebSocket 桌面即時通知功能。
+
+---
+
+## 🚀 一鍵啟動 (One-Click Startup)
+
+在專案根目錄下，您可以直接使用以下任一種方式一鍵啟動全套服務：
+
+1. **直接雙擊執行**：雙擊根目錄下的 `start.bat`
+2. **PowerShell 執行**：
+   ```powershell
+   .\start.ps1
+   ```
+
+執行後會自動開啟後端 API (Port 5000) 與前端 Vue 3 (Port 5173)，並自動打開預設瀏覽器跳轉至 `http://localhost:5173`。
 
 ---
 
@@ -30,31 +44,6 @@ MyNavicat 是一款媲美 Navicat 的現代化跨平台資料庫管理與自動�
 
 ---
 
-## 🚀 快速啟動指南
-
-系統採用雙端本地運行的極簡部署模式：
-
-### 1. 啟動後端 Web API (`http://localhost:5000`)
-
-```bash
-cd backend/MyNavicat.Api
-dotnet run
-```
-* **Swagger API UI**: `http://localhost:5000/swagger`
-* **Hangfire 排程儀表板**: `http://localhost:5000/hangfire`
-
-### 2. 啟動前端 Vue 3 開發伺服器 (`http://localhost:5173`)
-
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-開啟瀏覽器存取 `http://localhost:5173` 即可體驗完整介面！
-
----
-
 ## 🧪 執行單元測試
 
 ```bash
@@ -67,6 +56,8 @@ dotnet test backend/MyNavicat.Api.Tests/MyNavicat.Api.Tests.csproj
 
 ```
 myvavicat/
+├── start.bat                     # 一鍵啟動批次檔 (雙擊執行)
+├── start.ps1                     # 一鍵啟動 PowerShell 腳本
 ├── backend/
 │   ├── MyNavicat.Api/            # ASP.NET Core 8 Web API
 │   │   ├── Controllers/          # RESTful 控制器
