@@ -1,3 +1,0 @@
-﻿<Project>
-  <Import Project="..\build\MyNavicat.Api.props" />
-</Project>

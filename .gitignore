@@ -1,0 +1,17 @@
+# .NET Build output
+**/bin/
+**/obj/
+
+# SQLite & Backup outputs
+app.db*
+backups/
+
+# Node dependencies & dist
+**/node_modules/
+**/dist/
+
+# IDE & OS
+.vs/
+.idea/
+.DS_Store
+*.user
