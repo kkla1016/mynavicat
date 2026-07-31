@@ -9,6 +9,9 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// 設定預設監聽位址 (5000)
+builder.WebHost.UseUrls("http://localhost:5000");
+
 // 設定 Serilog
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration)
@@ -65,7 +68,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173")
+        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5000")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -85,20 +88,24 @@ using (var scope = app.Services.CreateScope())
     dbContext.Database.EnsureCreated();
 }
 
-if (app.Environment.IsDevelopment())
+app.UseSwagger();
+app.UseSwaggerUI(c =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(c =>
-    {
-        c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyNavicat API v1");
-    });
-}
+    c.SwaggerEndpoint("/swagger/v1/swagger.json", "MyNavicat API v1");
+});
 
 app.UseCors("AllowFrontend");
 
 app.UseRouting();
 
 app.UseAuthorization();
+
+// 根目錄重導向至 Swagger 頁面
+app.MapGet("/", ctx =>
+{
+    ctx.Response.Redirect("/swagger");
+    return Task.CompletedTask;
+});
 
 // 設定 Hangfire Dashboard
 app.UseHangfireDashboard("/hangfire");

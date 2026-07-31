@@ -4,13 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host --port 5173",
     "build": "vue-tsc -b && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.2",
-    "@microsoft/signalr": "^10.0.0",
+    "@microsoft/signalr": "^8.0.7",
     "axios": "^1.19.0",
     "element-plus": "^2.14.3",
     "pinia": "^4.0.2",
