@@ -157,7 +157,7 @@ const handleStartBackup = async () => {
     })
 
     if (res && res.success) {
-      ElMessage.success(`資料庫備份成功！檔案大小: ${(res.data.fileSize / 1024 / 1024).toFixed(2)} MB`)
+      ElMessage.success(`資料庫備份成功！大小: ${((res.data?.FileSize || 0) / 1024 / 1024).toFixed(2)} MB`)
     } else {
       ElMessage.error('備份失敗: ' + (res?.message || '未知錯誤'))
     }

@@ -1,0 +1,42 @@
+{
+  "name": "mynavicat-desktop",
+  "version": "2.0.0",
+  "description": "MyNavicat Desktop SQL Backup & Management Tool",
+  "main": "dist-electron/main/main.js",
+  "scripts": {
+    "build:electron": "npx tsc -p tsconfig.electron.json",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "electron:dev": "npm run build:electron && concurrently \"npm run dev:frontend\" \"wait-on http://localhost:5173 && cross-env NODE_ENV=development electron .\"",
+    "electron:build": "npm run build:electron && npm run build --prefix frontend && electron-builder"
+  },
+  "keywords": [
+    "sql",
+    "backup",
+    "navicat",
+    "electron",
+    "database"
+  ],
+  "author": "Antigravity Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^26.1.2",
+    "@types/node-cron": "^3.0.11",
+    "@types/pg": "^8.20.0",
+    "concurrently": "^10.0.4",
+    "cross-env": "^10.1.0",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^7.0.2",
+    "wait-on": "^9.1.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.2",
+    "mysql2": "^3.23.2",
+    "node-cron": "^4.6.0",
+    "pg": "^8.22.0",
+    "sqlite3": "^6.0.1",
+    "tedious": "^20.0.0"
+  }
+}

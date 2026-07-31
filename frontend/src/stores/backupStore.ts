@@ -1,82 +1,82 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { BackupHistory, BackupRequest, RestoreRequest } from '../types/backup'
-import {
-  executeBackupApi,
-  executeRestoreApi,
-  executeRestoreFromFileApi,
-  getBackupHistoryApi,
-  deleteBackupHistoryApi
-} from '../api/backup'
+import { ref, computed } from 'vue'
 
 export const useBackupStore = defineStore('backup', () => {
-  const historyList = ref<BackupHistory[]>([])
-  const totalCount = ref(0)
-  const loading = ref(false)
   const backingUp = ref(false)
   const restoring = ref(false)
+  const histories = ref<any[]>([])
 
-  const fetchHistory = async (connectionId?: number, status?: string, page = 1, pageSize = 20) => {
-    loading.value = true
-    try {
-      const res = await getBackupHistoryApi(connectionId, status, page, pageSize)
-      if (res && res.success) {
-        historyList.value = res.data.items
-        totalCount.value = res.data.totalCount
-      }
-    } finally {
-      loading.value = false
-    }
-  }
+  const loading = computed(() => backingUp.value || restoring.value)
+  const historyList = computed(() => histories.value)
+  const totalCount = computed(() => histories.value.length)
 
-  const executeBackup = async (request: BackupRequest) => {
+  const executeBackup = async (request: any) => {
     backingUp.value = true
     try {
-      const res = await executeBackupApi(request)
-      return res
+      if (window.electronAPI) {
+        const result = await window.electronAPI.executeBackup(request)
+        return { success: result?.Status === 'Success', data: result, message: result?.ErrorMessage || '備份完成' }
+      }
     } finally {
       backingUp.value = false
     }
   }
 
-  const executeRestore = async (request: RestoreRequest) => {
-    restoring.value = true
-    try {
-      const res = await executeRestoreApi(request)
-      return res
-    } finally {
-      restoring.value = false
+  const fetchHistories = async (connectionId?: number, status?: string, _page?: number, _pageSize?: number) => {
+    if (window.electronAPI) {
+      histories.value = await window.electronAPI.getBackupHistories(connectionId, status)
     }
   }
 
-  const executeRestoreFromFile = async (formData: FormData) => {
-    restoring.value = true
-    try {
-      const res = await executeRestoreFromFileApi(formData)
-      return res
-    } finally {
-      restoring.value = false
-    }
-  }
+  const fetchHistory = fetchHistories
 
   const deleteHistory = async (id: number) => {
-    const res = await deleteBackupHistoryApi(id)
-    if (res && res.success) {
-      await fetchHistory()
+    if (window.electronAPI) {
+      const ok = await window.electronAPI.deleteBackupHistory(id)
+      if (ok) await fetchHistories()
+      return { success: ok }
     }
-    return res
+    return { success: false }
+  }
+
+  const executeRestore = async (req: any) => {
+    restoring.value = true
+    try {
+      if (window.electronAPI) {
+        const ok = await window.electronAPI.executeRestore(req)
+        return { success: ok, message: ok ? '還原完成！' : '還原失敗' }
+      }
+    } finally {
+      restoring.value = false
+    }
+    return { success: false, message: 'Electron API 不可用' }
+  }
+
+  const executeRestoreFromFile = async (connId: number, database: string, file: any) => {
+    restoring.value = true
+    try {
+      if (window.electronAPI) {
+        const ok = await window.electronAPI.executeRestore({ targetConnectionId: connId, targetDatabaseName: database, filePath: file?.path })
+        return { success: ok, message: ok ? '還原完成！' : '還原失敗' }
+      }
+    } finally {
+      restoring.value = false
+    }
+    return { success: false, message: 'Electron API 不可用' }
   }
 
   return {
-    historyList,
-    totalCount,
-    loading,
     backingUp,
     restoring,
-    fetchHistory,
+    loading,
+    histories,
+    historyList,
+    totalCount,
     executeBackup,
+    fetchHistories,
+    fetchHistory,
+    deleteHistory,
     executeRestore,
-    executeRestoreFromFile,
-    deleteHistory
+    executeRestoreFromFile
   }
 })

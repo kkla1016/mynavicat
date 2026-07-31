@@ -43,7 +43,7 @@
                 @click="handleStartExport"
               >
                 <el-icon style="margin-right: 6px;"><Download /></el-icon>
-                開始匯出檔案
+                選擇儲存路徑並匯出
               </el-button>
             </el-form-item>
           </el-form>
@@ -67,30 +67,10 @@
               </el-select>
             </el-form-item>
 
-            <el-form-item label="上傳匯入檔案">
-              <el-upload
-                action=""
-                :auto-upload="false"
-                :limit="1"
-                :on-change="handleFileChange"
-                accept=".csv,.json"
-              >
-                <template #trigger>
-                  <el-button type="primary">選擇 CSV / JSON 檔案</el-button>
-                </template>
-              </el-upload>
-            </el-form-item>
-
-            <el-form-item>
-              <el-button
-                type="success"
-                size="large"
-                :disabled="!selectedConnId || !selectedDb || !selectedTable || !uploadFile"
-                :loading="importing"
-                @click="handleStartImport"
-              >
+            <el-form-item label="選擇匯入檔案">
+              <el-button type="success" size="large" :disabled="!selectedConnId || !selectedDb || !selectedTable" :loading="importing" @click="handleStartImport">
                 <el-icon style="margin-right: 6px;"><Upload /></el-icon>
-                開始匯入資料
+                選擇 CSV / JSON 檔案並匯入
               </el-button>
             </el-form-item>
           </el-form>
@@ -104,7 +84,6 @@
 import { ref } from 'vue'
 import { Download, Upload } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
 import ConnectionSelector from '../components/ConnectionSelector.vue'
 import { getDatabasesApi, getTablesApi } from '../api/browse'
 import type { TableInfo } from '../types/browse'
@@ -123,7 +102,6 @@ const tableLoading = ref(false)
 const exportFormat = ref('CSV')
 const exporting = ref(false)
 const importing = ref(false)
-const uploadFile = ref<File | null>(null)
 
 const handleConnChange = async (connId: number) => {
   selectedDb.value = ''
@@ -159,32 +137,21 @@ const handleDbChange = async (dbName: string) => {
   }
 }
 
-const handleFileChange = (file: any) => {
-  uploadFile.value = file.raw
-}
-
 const handleStartExport = async () => {
   if (!selectedConnId.value || !selectedDb.value || !selectedTable.value) return
   exporting.value = true
   try {
-    const response = await axios.post('/api/export-import/export', {
-      connectionId: selectedConnId.value,
-      databaseName: selectedDb.value,
-      tableName: selectedTable.value,
-      format: exportFormat.value
-    }, {
-      responseType: 'blob'
-    })
-
-    const url = window.URL.createObjectURL(new Blob([response.data]))
-    const link = document.createElement('a')
-    link.href = url
-    const ext = exportFormat.value.toLowerCase()
-    link.setAttribute('download', `${selectedTable.value}.${ext}`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    ElMessage.success('匯出成功！')
+    if (window.electronAPI) {
+      const res = await window.electronAPI.exportTableData({
+        connectionId: selectedConnId.value,
+        databaseName: selectedDb.value,
+        tableName: selectedTable.value,
+        format: exportFormat.value
+      })
+      if (res && res.success) {
+        ElMessage.success('檔案匯出成功！')
+      }
+    }
   } catch (err: any) {
     ElMessage.error('匯出失敗: ' + (err.message || '未知錯誤'))
   } finally {
@@ -193,28 +160,23 @@ const handleStartExport = async () => {
 }
 
 const handleStartImport = async () => {
-  if (!selectedConnId.value || !selectedDb.value || !selectedTable.value || !uploadFile.value) return
+  if (!selectedConnId.value || !selectedDb.value || !selectedTable.value) return
   importing.value = true
 
-  const formData = new FormData()
-  formData.append('connectionId', selectedConnId.value.toString())
-  formData.append('database', selectedDb.value)
-  formData.append('table', selectedTable.value)
-  formData.append('file', uploadFile.value)
-
   try {
-    const res = await axios.post('/api/export-import/import', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
+    if (window.electronAPI) {
+      const res = await window.electronAPI.importTableData({
+        connectionId: selectedConnId.value,
+        database: selectedDb.value,
+        table: selectedTable.value
+      })
 
-    if (res.data && res.data.success) {
-      const result = res.data.data
-      ElMessage.success(`資料匯入完成！成功: ${result.successRows} 筆，失敗: ${result.failedRows} 筆`)
-    } else {
-      ElMessage.error('匯入失敗: ' + (res.data?.message || '未知錯誤'))
+      if (res && res.success) {
+        ElMessage.success(`資料匯入完成！成功: ${res.data.successRows} 筆，失敗: ${res.data.failedRows} 筆`)
+      }
     }
   } catch (err: any) {
-    ElMessage.error('匯入發生例外: ' + (err.message || '未知錯誤'))
+    ElMessage.error('匯入失敗: ' + (err.message || '未知錯誤'))
   } finally {
     importing.value = false
   }

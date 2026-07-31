@@ -1,0 +1,28 @@
+{
+  "appId": "com.mynavicat.desktop",
+  "productName": "MyNavicat",
+  "directories": {
+    "output": "dist_electron"
+  },
+  "files": [
+    "dist-electron/**/*",
+    "frontend/dist/**/*",
+    "package.json"
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "frontend/public/favicon.svg"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "MyNavicat"
+  }
+}

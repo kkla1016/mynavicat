@@ -1,166 +1,110 @@
 <template>
   <div class="page-container">
-    <div class="toolbar">
-      <el-button type="primary" :icon="Plus" @click="handleOpenAddModal">
-        建立新排程
-      </el-button>
-      <el-button :icon="Refresh" @click="scheduleStore.fetchSchedules">
-        重新整理
-      </el-button>
-    </div>
+    <el-card class="schedule-card">
+      <template #header>
+        <div class="card-header">
+          <span>排程自動備份管理</span>
+          <el-button type="primary" @click="handleOpenAddDialog">
+            <el-icon style="margin-right: 4px;"><Plus /></el-icon>
+            新增自動排程
+          </el-button>
+        </div>
+      </template>
 
-    <el-card class="table-card">
-      <el-table :data="scheduleStore.schedules" v-loading="scheduleStore.loading" style="width: 100%">
-        <el-table-column prop="description" label="排程描述 / 名稱" min-width="150" />
-        <el-table-column prop="databaseName" label="目標資料庫" width="130" />
-        <el-table-column prop="cronExpression" label="Cron 表達式" width="130">
-          <template #default="{ row }">
-            <el-tag type="info" size="small">{{ row.cronExpression }}</el-tag>
-          </template>
-        </el-table-column>
+      <el-table :data="scheduleStore.schedules" style="width: 100%" v-loading="scheduleStore.loading" stripe>
+        <el-table-column prop="Id" label="ID" width="70" />
+        <el-table-column prop="ConnectionName" label="連線" width="140" />
+        <el-table-column prop="DatabaseName" label="資料庫" width="140" />
+        <el-table-column prop="CronExpression" label="Cron 表達式" width="160" />
         <el-table-column label="保留份數" width="100">
-          <template #default="{ row }">
-            {{ row.retainCount > 0 ? `${row.retainCount} 份` : '無限' }}
+          <template #default="scope">
+            {{ scope.row.RetainCount }} 份
           </template>
         </el-table-column>
-        <el-table-column label="啟用" width="90">
-          <template #default="{ row }">
+        <el-table-column label="狀態" width="100">
+          <template #default="scope">
             <el-switch
-              v-model="row.isEnabled"
-              @change="handleToggle(row.id)"
+              v-model="scope.row.IsEnabled"
+              :active-value="1"
+              :inactive-value="0"
+              @change="(val: any) => handleToggle(scope.row.Id, val)"
             />
           </template>
         </el-table-column>
-        <el-table-column label="上次執行" min-width="160">
-          <template #default="{ row }">
-            {{ formatDate(row.lastRunAt) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="220" fixed="right">
-          <template #default="{ row }">
-            <el-button size="small" type="success" plain @click="handleRunNow(row.id)">
-              立即執行
-            </el-button>
-            <el-button size="small" type="primary" plain @click="handleOpenEditModal(row)">
-              編輯
-            </el-button>
-            <el-popconfirm title="確定要刪除此排程嗎？" @confirm="handleDelete(row.id)">
-              <template #reference>
-                <el-button size="small" type="danger" plain>刪除</el-button>
-              </template>
-            </el-popconfirm>
+        <el-table-column label="操作" min-width="180">
+          <template #default="scope">
+            <el-button type="success" size="small" @click="handleRunNow(scope.row.Id)">立即執行</el-button>
+            <el-button type="primary" size="small" @click="handleEdit(scope.row)">編輯</el-button>
+            <el-button type="danger" size="small" @click="handleDelete(scope.row.Id)">刪除</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
 
-    <!-- 新增 / 編輯排程對話框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      :title="isEdit ? '編輯定時排程' : '新增定時排程'"
-      width="600px"
-      destroy-on-close
-    >
-      <el-form ref="formRef" :model="form" :rules="rules" label-width="120px">
-        <el-form-item label="排程描述" prop="description">
-          <el-input v-model="form.description" placeholder="例如: 每日凌晨資料庫自動備份" />
-        </el-form-item>
-
-        <el-form-item label="目標連線" prop="connectionId">
+    <el-dialog v-model="dialogVisible" :title="editingId ? '編輯自動備份排程' : '新增自動備份排程'" width="600px">
+      <el-form label-width="120px">
+        <el-form-item label="目標連線">
           <ConnectionSelector v-model="form.connectionId" @update:model-value="handleConnChange" />
         </el-form-item>
 
-        <el-form-item label="目標資料庫" prop="databaseName">
+        <el-form-item label="資料庫名稱">
           <el-select v-model="form.databaseName" placeholder="請選擇資料庫" style="width: 100%" :loading="dbLoading">
             <el-option v-for="db in dbList" :key="db" :label="db" :value="db" />
           </el-select>
         </el-form-item>
 
-        <el-form-item label="週期 Cron 設定" prop="cronExpression">
-          <CronEditor v-model="cronExpressionValue" />
+        <el-form-item label="Cron 時間設定">
+          <CronEditor v-model="form.cronExpression" />
         </el-form-item>
 
-        <el-form-item label="自動保留份數">
-          <el-input-number v-model="form.retainCount" :min="0" :max="100" />
-          <span style="margin-left: 8px; font-size: 0.85rem; color: #64748b;">(0 表示無限保留)</span>
+        <el-form-item label="保留歷史備份">
+          <el-input-number v-model="form.retainCount" :min="1" :max="100" />
+          <span style="margin-left: 8px; font-size: 0.85rem; color: #64748b;">超過的舊檔案將自動刪除</span>
         </el-form-item>
 
-        <el-form-item label="檔案壓縮">
-          <el-switch v-model="form.compressBackup" active-text="啟用壓縮 (.gz)" />
-        </el-form-item>
-
-        <el-form-item label="立即啟用">
-          <el-switch v-model="form.isEnabled" />
+        <el-form-item label="啟用壓縮">
+          <el-switch v-model="form.compress" />
         </el-form-item>
       </el-form>
 
       <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" :loading="submitting" @click="handleSubmit">
-            {{ isEdit ? '儲存變更' : '建立排程' }}
-          </el-button>
-        </div>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handleSave">儲存排程</el-button>
       </template>
     </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
-import { Plus, Refresh } from '@element-plus/icons-vue'
-import { ElMessage, type FormInstance, type FormRules } from 'element-plus'
+import { ref, reactive, onMounted } from 'vue'
+import { Plus } from '@element-plus/icons-vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import ConnectionSelector from '../components/ConnectionSelector.vue'
 import CronEditor from '../components/CronEditor.vue'
 import { useScheduleStore } from '../stores/scheduleStore'
 import { getDatabasesApi } from '../api/browse'
-import type { Schedule } from '../types/schedule'
 
 const scheduleStore = useScheduleStore()
 
 const dialogVisible = ref(false)
-const isEdit = ref(false)
-const submitting = ref(false)
-const currentEditId = ref<number | null>(null)
-const formRef = ref<FormInstance>()
+const editingId = ref<number | null>(null)
 
 const dbList = ref<string[]>([])
 const dbLoading = ref(false)
 
-const form = reactive<Partial<Schedule>>({
-  description: '',
-  connectionId: undefined,
+const form = reactive({
+  connectionId: null as number | null,
   databaseName: '',
-  cronExpression: '0 0 * * *',
-  retainCount: 10,
-  compressBackup: true,
-  compressionType: 'gz',
-  isEnabled: true
+  cronExpression: '0 2 * * *',
+  retainCount: 7,
+  compress: true,
+  compressionType: 'gz'
 })
-
-const cronExpressionValue = computed({
-  get: () => form.cronExpression || '0 0 * * *',
-  set: (val: string) => { form.cronExpression = val }
-})
-
-const rules: FormRules = {
-  connectionId: [{ required: true, message: '請選擇目標連線', trigger: 'change' }],
-  databaseName: [{ required: true, message: '請選擇目標資料庫', trigger: 'change' }],
-  cronExpression: [{ required: true, message: '請設定 Cron 表達式', trigger: 'blur' }]
-}
-
-onMounted(() => {
-  scheduleStore.fetchSchedules()
-})
-
-const formatDate = (dateStr?: string | null) => {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleString()
-}
 
 const handleConnChange = async (connId: number) => {
   form.databaseName = ''
   dbList.value = []
+
   if (!connId) return
   dbLoading.value = true
   try {
@@ -173,106 +117,94 @@ const handleConnChange = async (connId: number) => {
   }
 }
 
-const handleOpenAddModal = () => {
-  isEdit.value = false
-  currentEditId.value = null
-  Object.assign(form, {
-    description: '',
-    connectionId: undefined,
-    databaseName: '',
-    cronExpression: '0 0 * * *',
-    retainCount: 10,
-    compressBackup: true,
-    compressionType: 'gz',
-    isEnabled: true
-  })
+const handleOpenAddDialog = () => {
+  editingId.value = null
+  form.connectionId = null
+  form.databaseName = ''
+  form.cronExpression = '0 2 * * *'
+  form.retainCount = 7
+  form.compress = true
   dialogVisible.value = true
 }
 
-const handleOpenEditModal = async (row: Schedule) => {
-  isEdit.value = true
-  currentEditId.value = row.id
-  Object.assign(form, {
-    description: row.description,
-    connectionId: row.connectionId,
-    databaseName: row.databaseName,
-    cronExpression: row.cronExpression,
-    retainCount: row.retainCount,
-    compressBackup: row.compressBackup,
-    compressionType: row.compressionType,
-    isEnabled: row.isEnabled
-  })
-  if (row.connectionId) {
-    await handleConnChange(row.connectionId)
-    form.databaseName = row.databaseName
+const handleEdit = (row: any) => {
+  editingId.value = row.Id
+  form.connectionId = row.ConnectionId
+  form.databaseName = row.DatabaseName
+  form.cronExpression = row.CronExpression
+  form.retainCount = row.RetainCount
+  form.compress = row.Compress === 1
+  dialogVisible.value = true
+}
+
+const handleToggle = async (id: number, val: any) => {
+  const isEnabled = val === 1 || val === true
+  const res = await scheduleStore.toggleSchedule(id, isEnabled)
+  if (res && res.success) {
+    ElMessage.success('排程狀態已更新')
   }
-  dialogVisible.value = true
-}
-
-const handleToggle = async (id: number) => {
-  await scheduleStore.toggleSchedule(id)
-  ElMessage.success('排程啟用狀態已更新')
 }
 
 const handleRunNow = async (id: number) => {
-  const res = await scheduleStore.runNowSchedule(id)
+  const res = await scheduleStore.runScheduleNow(id)
   if (res && res.success) {
-    ElMessage.success('已觸發立即執行排程任務')
+    ElMessage.success('排程備份觸發成功')
+  } else {
+    ElMessage.error('觸發失敗')
   }
-}
-
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  await formRef.value.validate(async (valid) => {
-    if (!valid) return
-    submitting.value = true
-    try {
-      if (isEdit.value && currentEditId.value) {
-        const res = await scheduleStore.updateSchedule(currentEditId.value, form)
-        if (res && res.success) {
-          ElMessage.success('排程設定已更新')
-          dialogVisible.value = false
-        }
-      } else {
-        const res = await scheduleStore.createSchedule(form)
-        if (res && res.success) {
-          ElMessage.success('排程已建立並註冊定時任務')
-          dialogVisible.value = false
-        }
-      }
-    } finally {
-      submitting.value = false
-    }
-  })
 }
 
 const handleDelete = async (id: number) => {
-  const res = await scheduleStore.deleteSchedule(id)
+  try {
+    await ElMessageBox.confirm('確定要刪除此排程嗎？', '刪除確認', { type: 'warning' })
+    const res = await scheduleStore.deleteSchedule(id)
+    if (res && res.success) {
+      ElMessage.success('排程已刪除')
+    }
+  } catch {}
+}
+
+const handleSave = async () => {
+  if (!form.connectionId || !form.databaseName) return
+
+  const payload = {
+    Id: editingId.value,
+    ConnectionId: form.connectionId,
+    DatabaseName: form.databaseName,
+    CronExpression: form.cronExpression,
+    RetainCount: form.retainCount,
+    Compress: form.compress,
+    CompressionType: 'gz',
+    IsEnabled: 1
+  }
+
+  const res = await scheduleStore.saveSchedule(payload)
   if (res && res.success) {
-    ElMessage.success('排程已刪除')
+    ElMessage.success('排程已儲存')
+    dialogVisible.value = false
   }
 }
+
+onMounted(() => {
+  scheduleStore.fetchSchedules()
+})
 </script>
 
 <style scoped lang="scss">
 .page-container {
   padding: 24px;
 
-  .toolbar {
-    margin-bottom: 16px;
-    display: flex;
-    gap: 12px;
-  }
-
-  .table-card {
+  .schedule-card {
     background-color: #1d263b;
     border-color: #2e3a52;
-  }
 
-  .dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1rem;
+      font-weight: 600;
+    }
   }
 }
 </style>

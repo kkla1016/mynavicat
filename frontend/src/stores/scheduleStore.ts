@@ -1,75 +1,75 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
-import type { Schedule } from '../types/schedule'
-import {
-  getSchedulesApi,
-  createScheduleApi,
-  updateScheduleApi,
-  deleteScheduleApi,
-  toggleScheduleApi,
-  runNowScheduleApi
-} from '../api/schedule'
+import { ref, computed } from 'vue'
 
 export const useScheduleStore = defineStore('schedule', () => {
-  const schedules = ref<Schedule[]>([])
+  const schedules = ref<any[]>([])
   const loading = ref(false)
+
+  const scheduleList = computed(() => schedules.value)
 
   const fetchSchedules = async () => {
     loading.value = true
     try {
-      const res = await getSchedulesApi()
-      if (res && res.success) {
-        schedules.value = res.data
+      if (window.electronAPI) {
+        schedules.value = await window.electronAPI.getSchedules()
       }
     } finally {
       loading.value = false
     }
   }
 
-  const createSchedule = async (data: Partial<Schedule>) => {
-    const res = await createScheduleApi(data)
-    if (res && res.success) {
+  const saveSchedule = async (schedule: any) => {
+    if (window.electronAPI) {
+      const result = await window.electronAPI.saveSchedule(schedule)
       await fetchSchedules()
+      return { success: true, data: result }
     }
-    return res
+    return { success: false }
   }
 
-  const updateSchedule = async (id: number, data: Partial<Schedule>) => {
-    const res = await updateScheduleApi(id, data)
-    if (res && res.success) {
-      await fetchSchedules()
-    }
-    return res
-  }
+  const createSchedule = saveSchedule
+  const updateSchedule = async (_id: number, schedule: any) => saveSchedule(schedule)
 
   const deleteSchedule = async (id: number) => {
-    const res = await deleteScheduleApi(id)
-    if (res && res.success) {
-      await fetchSchedules()
+    if (window.electronAPI) {
+      const ok = await window.electronAPI.deleteSchedule(id)
+      if (ok) await fetchSchedules()
+      return { success: ok }
     }
-    return res
+    return { success: false }
   }
 
-  const toggleSchedule = async (id: number) => {
-    const res = await toggleScheduleApi(id)
-    if (res && res.success) {
-      await fetchSchedules()
+  const toggleSchedule = async (id: number, isEnabled?: boolean) => {
+    if (window.electronAPI) {
+      const targetState = isEnabled !== undefined ? isEnabled : true
+      const ok = await window.electronAPI.toggleSchedule(id, targetState)
+      if (ok) await fetchSchedules()
+      return { success: ok }
     }
-    return res
+    return { success: false }
   }
 
-  const runNowSchedule = async (id: number) => {
-    return await runNowScheduleApi(id)
+  const runScheduleNow = async (id: number) => {
+    if (window.electronAPI) {
+      const ok = await window.electronAPI.runScheduleNow(id)
+      return { success: ok }
+    }
+    return { success: false }
   }
+
+  const runNowSchedule = runScheduleNow
 
   return {
     schedules,
+    scheduleList,
     loading,
     fetchSchedules,
+    saveSchedule,
     createSchedule,
     updateSchedule,
     deleteSchedule,
     toggleSchedule,
+    runScheduleNow,
     runNowSchedule
   }
 })

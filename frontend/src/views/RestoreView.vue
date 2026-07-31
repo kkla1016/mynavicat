@@ -3,57 +3,63 @@
     <el-card class="form-card">
       <template #header>
         <div class="card-header">
-          <span>資料庫還原</span>
+          <span>執行資料庫還原</span>
         </div>
       </template>
 
-      <el-tabs v-model="restoreMode">
-        <el-tab-pane label="從歷史記錄還原" name="history">
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="從歷史紀錄還原" name="history">
           <el-form label-width="120px" class="restore-form">
-            <el-form-item label="選擇歷史備份">
-              <el-select
-                v-model="selectedHistoryId"
-                placeholder="請選擇備份記錄"
-                style="width: 100%"
-                filterable
-              >
-                <el-option
-                  v-for="item in historyOptions"
-                  :key="item.id"
-                  :label="`${item.databaseName} - ${item.startedAt} (${item.backupType})`"
-                  :value="item.id"
-                />
-              </el-select>
-            </el-form-item>
-
-            <el-form-item label="目標連線">
-              <ConnectionSelector v-model="targetConnId" />
+            <el-form-item label="目標資料庫連線">
+              <ConnectionSelector v-model="selectedConnId" @update:model-value="handleConnChange" />
             </el-form-item>
 
             <el-form-item label="目標資料庫名稱">
-              <el-input v-model="targetDbName" placeholder="例如: target_db" />
+              <el-select v-model="selectedDb" placeholder="請選擇目標資料庫" style="width: 100%" :loading="dbLoading">
+                <el-option v-for="db in dbList" :key="db" :label="db" :value="db" />
+              </el-select>
+            </el-form-item>
+
+            <el-form-item label="選擇備份檔">
+              <el-select v-model="selectedHistoryId" placeholder="請選擇歷史備份紀錄" style="width: 100%">
+                <el-option
+                  v-for="h in backupStore.histories"
+                  :key="h.Id"
+                  :label="`${h.DatabaseName} (${h.StartedAt}) - ${(h.FileSize/1024/1024).toFixed(2)} MB`"
+                  :value="h.Id"
+                />
+              </el-select>
             </el-form-item>
 
             <el-form-item>
               <el-button
                 type="warning"
                 size="large"
-                :disabled="!selectedHistoryId || !targetConnId || !targetDbName"
+                :disabled="!selectedConnId || !selectedDb || !selectedHistoryId"
                 :loading="backupStore.restoring"
                 @click="handleRestoreFromHistory"
               >
                 <el-icon style="margin-right: 6px;"><Upload /></el-icon>
-                開始從歷史記錄還原
+                開始從歷史還原
               </el-button>
             </el-form-item>
           </el-form>
         </el-tab-pane>
 
-        <el-tab-pane label="上傳檔案還原" name="file">
+        <el-tab-pane label="上傳外部檔案還原" name="file">
           <el-form label-width="120px" class="restore-form">
+            <el-form-item label="目標資料庫連線">
+              <ConnectionSelector v-model="selectedConnId" @update:model-value="handleConnChange" />
+            </el-form-item>
+
+            <el-form-item label="目標資料庫名稱">
+              <el-select v-model="selectedDb" placeholder="請選擇目標資料庫" style="width: 100%" :loading="dbLoading">
+                <el-option v-for="db in dbList" :key="db" :label="db" :value="db" />
+              </el-select>
+            </el-form-item>
+
             <el-form-item label="上傳備份檔">
               <el-upload
-                ref="uploadRef"
                 action=""
                 :auto-upload="false"
                 :limit="1"
@@ -66,24 +72,16 @@
               </el-upload>
             </el-form-item>
 
-            <el-form-item label="目標連線">
-              <ConnectionSelector v-model="targetConnId" />
-            </el-form-item>
-
-            <el-form-item label="目標資料庫名稱">
-              <el-input v-model="targetDbName" placeholder="例如: target_db" />
-            </el-form-item>
-
             <el-form-item>
               <el-button
-                type="warning"
+                type="danger"
                 size="large"
-                :disabled="!uploadFile || !targetConnId || !targetDbName"
+                :disabled="!selectedConnId || !selectedDb || !uploadFile"
                 :loading="backupStore.restoring"
                 @click="handleRestoreFromFile"
               >
                 <el-icon style="margin-right: 6px;"><Upload /></el-icon>
-                上傳並還原資料庫
+                開始上傳檔還原
               </el-button>
             </el-form-item>
           </el-form>
@@ -94,69 +92,87 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Upload } from '@element-plus/icons-vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import ConnectionSelector from '../components/ConnectionSelector.vue'
 import { useBackupStore } from '../stores/backupStore'
+import { getDatabasesApi } from '../api/browse'
 
 const backupStore = useBackupStore()
+const activeTab = ref('history')
 
-const restoreMode = ref('history')
+const selectedConnId = ref<number | null>(null)
+const selectedDb = ref('')
+const dbList = ref<string[]>([])
+const dbLoading = ref(false)
+
 const selectedHistoryId = ref<number | null>(null)
-const targetConnId = ref<number | null>(null)
-const targetDbName = ref('')
-const uploadFile = ref<File | null>(null)
+const uploadFile = ref<any>(null)
 
-const historyOptions = computed(() => backupStore.historyList.filter(h => h.status === 'Success'))
+const handleConnChange = async (connId: number) => {
+  selectedDb.value = ''
+  dbList.value = []
 
-onMounted(() => {
-  backupStore.fetchHistory()
-})
+  if (!connId) return
+  dbLoading.value = true
+  try {
+    const res = await getDatabasesApi(connId)
+    if (res && res.success) {
+      dbList.value = res.data
+    }
+  } finally {
+    dbLoading.value = false
+  }
+}
 
 const handleFileChange = (file: any) => {
   uploadFile.value = file.raw
 }
 
 const handleRestoreFromHistory = async () => {
-  if (!selectedHistoryId.value || !targetConnId.value || !targetDbName.value) return
+  if (!selectedConnId.value || !selectedDb.value || !selectedHistoryId.value) return
 
   try {
+    await ElMessageBox.confirm('還原操作將覆寫目標資料庫中的現有資料，確定繼續嗎？', '警告', {
+      type: 'warning'
+    })
+
     const res = await backupStore.executeRestore({
-      backupHistoryId: selectedHistoryId.value,
-      targetConnectionId: targetConnId.value,
-      targetDatabaseName: targetDbName.value
+      targetConnectionId: selectedConnId.value,
+      targetDatabaseName: selectedDb.value,
+      backupHistoryId: selectedHistoryId.value
     })
 
     if (res && res.success) {
-      ElMessage.success('資料庫已成功還原！')
+      ElMessage.success('資料庫還原成功！')
     } else {
       ElMessage.error('還原失敗: ' + (res?.message || '未知錯誤'))
     }
-  } catch (err: any) {
-    ElMessage.error('還原發生例外: ' + (err.message || '未知錯誤'))
-  }
+  } catch {}
 }
 
 const handleRestoreFromFile = async () => {
-  if (!uploadFile.value || !targetConnId.value || !targetDbName.value) return
-
-  const formData = new FormData()
-  formData.append('targetConnectionId', targetConnId.value.toString())
-  formData.append('targetDatabaseName', targetDbName.value)
-  formData.append('file', uploadFile.value)
+  if (!selectedConnId.value || !selectedDb.value || !uploadFile.value) return
 
   try {
-    const res = await backupStore.executeRestoreFromFile(formData)
+    await ElMessageBox.confirm('還原操作將覆寫目標資料庫中的現有資料，確定繼續嗎？', '警告', {
+      type: 'warning'
+    })
+
+    const res = await backupStore.executeRestoreFromFile(selectedConnId.value, selectedDb.value, uploadFile.value)
+
     if (res && res.success) {
-      ElMessage.success('上傳還原資料庫成功！')
+      ElMessage.success('外部檔案還原成功！')
     } else {
       ElMessage.error('還原失敗: ' + (res?.message || '未知錯誤'))
     }
-  } catch (err: any) {
-    ElMessage.error('上傳還原發生例外: ' + (err.message || '未知錯誤'))
-  }
+  } catch {}
 }
+
+onMounted(() => {
+  backupStore.fetchHistories()
+})
 </script>
 
 <style scoped lang="scss">

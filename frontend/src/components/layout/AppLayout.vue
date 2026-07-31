@@ -1,11 +1,14 @@
 <template>
-  <div class="app-layout">
-    <Sidebar />
-    <div class="main-container">
-      <Header />
-      <main class="content-area">
-        <router-view />
-      </main>
+  <div class="app-wrapper">
+    <CustomTitlebar />
+    <div class="app-layout">
+      <Sidebar />
+      <div class="main-container">
+        <Header />
+        <div class="content-area">
+          <router-view />
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -13,21 +16,27 @@
 <script setup lang="ts">
 import Sidebar from './Sidebar.vue'
 import Header from './Header.vue'
+import CustomTitlebar from './CustomTitlebar.vue'
 </script>
 
 <style scoped lang="scss">
+.app-wrapper {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
 .app-layout {
   display: flex;
-  width: 100vw;
-  height: 100vh;
-  background-color: #121824;
+  flex: 1;
   overflow: hidden;
 
   .main-container {
-    flex: 1;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    flex: 1;
     overflow: hidden;
 
     .content-area {
