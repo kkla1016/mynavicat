@@ -1,0 +1,35 @@
+@import './variables.scss';
+
+// Element Plus 深色主題客製化覆寫
+html.dark {
+  --el-bg-color: #121824;
+  --el-bg-color-page: #121824;
+  --el-bg-color-overlay: #1d263b;
+  --el-text-color-primary: #e2e8f0;
+  --el-text-color-regular: #cbd5e1;
+  --el-text-color-secondary: #94a3b8;
+  --el-border-color: #2e3a52;
+  --el-border-color-light: #3a4966;
+  --el-border-color-lighter: #242f47;
+  --el-fill-color-blank: #1a2234;
+  --el-color-primary: #3b82f6;
+  --el-color-success: #10b981;
+  --el-color-warning: #f59e0b;
+  --el-color-danger: #ef4444;
+}
+
+.el-aside {
+  background-color: $bg-secondary;
+  border-right: 1px solid $border-color;
+}
+
+.el-header {
+  background-color: $bg-secondary;
+  border-bottom: 1px solid $border-color;
+}
+
+.el-card {
+  background-color: $bg-card;
+  border-color: $border-color;
+  color: $text-primary;
+}
