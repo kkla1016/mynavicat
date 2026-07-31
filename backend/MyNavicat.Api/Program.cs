@@ -9,8 +9,8 @@ using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 設定預設監聽位址 (5000)
-builder.WebHost.UseUrls("http://localhost:5000");
+// 設定預設監聽位址 (5050)
+builder.WebHost.UseUrls("http://localhost:5050");
 
 // 設定 Serilog
 Log.Logger = new LoggerConfiguration()
@@ -68,7 +68,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5000")
+        policy.WithOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://localhost:5050")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

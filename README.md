@@ -14,7 +14,7 @@ MyNavicat 是一款媲美 Navicat 的現代化跨平台資料庫管理與自動�
    .\start.ps1
    ```
 
-執行後會自動開啟後端 API (Port 5000) 與前端 Vue 3 (Port 5173)，並自動打開預設瀏覽器跳轉至 `http://localhost:5173`。
+執行後會自動開啟後端 API (Port 5050) 與前端 Vue 3 (Port 5173)，並自動打開預設瀏覽器跳轉至 `http://localhost:5173`。
 
 ---
 
@@ -59,7 +59,7 @@ myvavicat/
 ├── start.bat                     # 一鍵啟動批次檔 (雙擊執行)
 ├── start.ps1                     # 一鍵啟動 PowerShell 腳本
 ├── backend/
-│   ├── MyNavicat.Api/            # ASP.NET Core 8 Web API
+│   ├── MyNavicat.Api/            # ASP.NET Core 8 Web API (Port 5050)
 │   │   ├── Controllers/          # RESTful 控制器
 │   │   ├── Data/                 # AppDbContext (SQLite)
 │   │   ├── Hubs/                 # SignalR NotificationHub
@@ -67,7 +67,7 @@ myvavicat/
 │   │   ├── Providers/            # 6 大 DB Provider (IDbProvider)
 │   │   └── Services/             # 業務層 (Backup, Schedule, Crypto 等)
 │   └── MyNavicat.Api.Tests/      # xUnit 單元測試專案 (34 項測試)
-├── frontend/                     # Vue 3 + Vite + TypeScript 前端
+├── frontend/                     # Vue 3 + Vite + TypeScript 前端 (Port 5173)
 │   ├── src/
 │   │   ├── api/                  # Axios API 請求模組
 │   │   ├── components/           # UI 元件 (DatabaseTree, DataTable, CronEditor)
@@ -75,7 +75,7 @@ myvavicat/
 │   │   ├── stores/               # Pinia 狀態管理 (Connection, Backup, Schedule)
 │   │   ├── styles/               # SCSS 深色主題與 Element Plus 覆寫
 │   │   └── views/                # 頁面視圖 (Connections, Browse, Backup, Restore, Schedules, History)
-│   └── vite.config.ts            # Vite 設定與 API Proxy
+│   └── vite.config.ts            # Vite 設定與 API Proxy (指向 5050)
 ├── docs/
 │   └── spec.md                   # 產品規格需求書 (PRD)
 └── gemini.md                     # Antigravity 開發規範指引
