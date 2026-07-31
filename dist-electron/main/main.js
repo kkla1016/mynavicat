@@ -60,6 +60,7 @@ function createWindow() {
         minHeight: 700,
         frame: false,
         backgroundColor: '#121824',
+        show: false, // 等待內容載入完畢再顯示
         webPreferences: {
             preload: path.join(__dirname, '../preload/preload.js'),
             nodeIntegration: false,
@@ -67,13 +68,26 @@ function createWindow() {
             sandbox: false
         }
     });
+    const distIndexPath = path.join(__dirname, '../../frontend/dist/index.html');
     const isDev = process.env.NODE_ENV === 'development';
     if (isDev) {
-        mainWindow.loadURL('http://localhost:5173');
+        mainWindow.loadURL('http://localhost:5173').catch(() => {
+            if (fs.existsSync(distIndexPath)) {
+                mainWindow?.loadFile(distIndexPath);
+            }
+        });
     }
     else {
-        mainWindow.loadFile(path.join(__dirname, '../../frontend/dist/index.html'));
+        if (fs.existsSync(distIndexPath)) {
+            mainWindow.loadFile(distIndexPath);
+        }
+        else {
+            mainWindow.loadURL('http://localhost:5173');
+        }
     }
+    mainWindow.once('ready-to-show', () => {
+        mainWindow?.show();
+    });
     mainWindow.on('close', (event) => {
         if (!isQuitting) {
             event.preventDefault();
